@@ -1,0 +1,11 @@
+Subject: chan_sip
+
+Users can now inject custom SIP parameters into arbitrary
+SIP headers through use of the SIPAddParameter application.
+A SIP_PARAMETER function also allows for parameters to be extracted
+from SIP headers.
+
+Additionally, the placement of custom SIP parameters added
+to headers can be moved from after the ;tag= tag to
+before it to comply with the requirements of some SS7
+carriers.
