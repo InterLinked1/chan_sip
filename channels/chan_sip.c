@@ -281,6 +281,7 @@
 #include "sip/include/dialplan_functions.h"
 #include "sip/include/security_events.h"
 #include "sip/include/route.h"
+#include "sip/include/hep.h"
 #include "asterisk/sip_api.h"
 #include "asterisk/mwi.h"
 #include "asterisk/bridge.h"
@@ -4876,6 +4877,7 @@ static int send_response(struct sip_pvt *p, struct sip_request *req, enum xmitty
 
 	finalize_content(req);
 	add_blank(req);
+	hep_handler(p, req, 1);
 	if (sip_debug_test_pvt(p)) {
 		const struct ast_sockaddr *dst = sip_real_dst(p);
 
@@ -4925,6 +4927,7 @@ static int send_request(struct sip_pvt *p, struct sip_request *req, enum xmittyp
 
 	finalize_content(req);
 	add_blank(req);
+	hep_handler(p, req, 1);
 	if (sip_debug_test_pvt(p)) {
 		if (ast_test_flag(&p->flags[0], SIP_NAT_FORCE_RPORT)) {
 			ast_verbose("%sTransmitting (NAT) to %s:\n%s\n---\n", reliable ? "Reliably " : "", ast_sockaddr_stringify(&p->recv), ast_str_buffer(req->data));
@@ -29752,6 +29755,7 @@ static int handle_request_do(struct sip_request *req, struct ast_sockaddr *addr)
 	if (p->logger_callid) {
 		ast_callid_threadassoc_add(p->logger_callid);
 	}
+	hep_handler(p, req, 0);
 
 	/* Lock both the pvt and the owner if owner is present.  This will
 	 * not fail. */
@@ -36260,6 +36264,6 @@ AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_LOAD_ORDER, "Session Initiation Pr
 	.unload = unload_module,
 	.reload = reload,
 	.load_pri = AST_MODPRI_CHANNEL_DRIVER,
-	.requires = "ccss,dnsmgr,udptl",
+	.requires = "ccss,dnsmgr,udptl,res_hep",
 	.optional_modules = "res_crypto,res_http_websocket",
 );
