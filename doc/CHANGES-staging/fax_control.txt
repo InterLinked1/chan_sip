@@ -1,0 +1,9 @@
+Subject: chan_sip
+
+The FAX_DETECT_SECONDS variable can now
+be set in the dialplan to set the duration
+from channel creation that fax detection
+should be enabled. The FAX_DETECT_OFF variable,
+if set to 1, will disable this detection.
+These changes only apply to channels with
+fax detection enabled.

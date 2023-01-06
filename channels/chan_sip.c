@@ -8774,6 +8774,46 @@ static struct ast_frame *sip_rtp_read(struct ast_channel *ast, struct sip_pvt *p
 	}
 
 	if (f && p->dsp) {
+		int features;
+		/* the channel is already locked here */
+		features = ast_dsp_get_features(p->dsp);
+		if (features & DSP_FEATURE_FAX_DETECT) { /* if no fax detect, then skip all this */
+			/* the variables are set in the dialplan after the channel is created,
+			so we're going to need to continually check these things or we
+			might miss something. */
+			const char *sseconds, *senabled;
+			int disablefax = 0;
+			sseconds = pbx_builtin_getvar_helper(ast, "FAX_DETECT_SECONDS");
+			senabled = pbx_builtin_getvar_helper(ast, "FAX_DETECT_OFF");
+			if (senabled) {
+				disablefax = atoi(senabled);
+			}
+			if (disablefax) { /* per-call disable fax detection. So bail out now! */
+				ast_debug(1, "Disabled fax detection for this call\n");
+				/* If we only needed this DSP for fax detection purposes we can just drop it now */
+				if (ast_test_flag(&p->flags[0], SIP_DTMF) == SIP_DTMF_INBAND) {
+					ast_dsp_set_features(p->dsp, DSP_FEATURE_DIGIT_DETECT);
+				} else {
+					disable_dsp_detect(p);
+				}
+				return f;
+			} else if (sseconds) { /* see if time allotted for fax detect has been exceeded */
+				int age, maxseconds;
+				age = ast_channel_get_duration(ast);
+				maxseconds = atoi(sseconds);
+				if (age > maxseconds) {
+					ast_debug(1, "Disabled fax detection for remainder of this call\n");
+					/* If we only needed this DSP for fax detection purposes we can just drop it now */
+					if (ast_test_flag(&p->flags[0], SIP_DTMF) == SIP_DTMF_INBAND) {
+						ast_dsp_set_features(p->dsp, DSP_FEATURE_DIGIT_DETECT);
+					} else {
+						disable_dsp_detect(p);
+					}
+					return f;
+				}
+			}
+		}
+
 		f = ast_dsp_process(p->owner, p->dsp, f);
 		if (f && f->frametype == AST_FRAME_DTMF) {
 			if (f->subclass.integer == 'f') {
@@ -11226,22 +11266,41 @@ static int process_sdp(struct sip_pvt *p, struct sip_request *req, int t38action
 				change_t38_state(p, T38_PEER_REINVITE); /* T38 Offered in re-invite from remote party */
 				/* If fax detection is enabled then send us off to the fax extension */
 				if (ast_test_flag(&p->flags[1], SIP_PAGE2_FAX_DETECT_T38)) {
-					ast_channel_lock(p->owner);
-					if (strcmp(ast_channel_exten(p->owner), "fax")) {
-						const char *target_context = S_OR(ast_channel_macrocontext(p->owner), ast_channel_context(p->owner));
-						ast_channel_unlock(p->owner);
-						if (ast_exists_extension(p->owner, target_context, "fax", 1,
-							S_COR(ast_channel_caller(p->owner)->id.number.valid, ast_channel_caller(p->owner)->id.number.str, NULL))) {
-							ast_verb(2, "Redirecting '%s' to fax extension due to peer T.38 re-INVITE\n", ast_channel_name(p->owner));
-							pbx_builtin_setvar_helper(p->owner, "FAXEXTEN", ast_channel_exten(p->owner));
-							if (ast_async_goto(p->owner, target_context, "fax", 1)) {
-								ast_log(LOG_NOTICE, "Failed to async goto '%s' into fax of '%s'\n", ast_channel_name(p->owner), target_context);
+					const char *sseconds, *senabled;
+					int disablefax = 0;
+					sseconds = pbx_builtin_getvar_helper(p->owner, "FAX_DETECT_SECONDS");
+					senabled = pbx_builtin_getvar_helper(p->owner, "FAX_DETECT_OFF");
+					if (senabled) {
+						disablefax = atoi(senabled);
+					}
+					if (!disablefax && sseconds) { /* see if time allotted for fax detect has been exceeded */
+						int age, maxseconds;
+						age = ast_channel_get_duration(p->owner);
+						maxseconds = atoi(sseconds);
+						if (age > maxseconds) {
+							disablefax = 1;
+						}
+					}
+					if (disablefax) {
+						ast_debug(1, "Detected T.38 re-invite, but ignoring\n");
+					} else {
+						ast_channel_lock(p->owner);
+						if (strcmp(ast_channel_exten(p->owner), "fax")) {
+							const char *target_context = S_OR(ast_channel_macrocontext(p->owner), ast_channel_context(p->owner));
+							ast_channel_unlock(p->owner);
+							if (ast_exists_extension(p->owner, target_context, "fax", 1,
+								S_COR(ast_channel_caller(p->owner)->id.number.valid, ast_channel_caller(p->owner)->id.number.str, NULL))) {
+								ast_verb(2, "Redirecting '%s' to fax extension due to peer T.38 re-INVITE\n", ast_channel_name(p->owner));
+								pbx_builtin_setvar_helper(p->owner, "FAXEXTEN", ast_channel_exten(p->owner));
+								if (ast_async_goto(p->owner, target_context, "fax", 1)) {
+									ast_log(LOG_NOTICE, "Failed to async goto '%s' into fax of '%s'\n", ast_channel_name(p->owner), target_context);
+								}
+							} else {
+								ast_log(LOG_NOTICE, "T.38 re-INVITE detected but no fax extension\n");
 							}
 						} else {
-							ast_log(LOG_NOTICE, "T.38 re-INVITE detected but no fax extension\n");
+							ast_channel_unlock(p->owner);
 						}
-					} else {
-						ast_channel_unlock(p->owner);
 					}
 				}
 			}
