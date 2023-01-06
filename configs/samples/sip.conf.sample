@@ -542,6 +542,15 @@ srvlookup=yes                   ; Enable DNS SRV lookups on outbound calls
                                                     ; is disabled, Asterisk won't send Diversion headers unless
                                                     ; they are added manually.
 
+;send_oli=no                    ; Default "no"      ; Asterisk can pass ANI2 or Originating Line Information (OLI)
+                                                    ; if desired. This will appear as isup-oli in the From header.
+
+;uri_parameters_instead=no      ; Default "no"      ; Some carriers expect isup-oli and other carrier tags to be
+                                                    ; URI parameters (inside the <>) instead of Header parameters
+													; (outside the <>). This setting allows for compatability
+													; with these carriers. Custom SIP parameters in the From
+													; header may be set using the SIPAddParameter application.
+
 ; The shrinkcallerid function removes '(', ' ', ')', non-trailing '.', and '-' not
 ; in square brackets.  For example, the caller id value 555.5555 becomes 5555555
 ; when this option is enabled.  Disabling this option results in no modification

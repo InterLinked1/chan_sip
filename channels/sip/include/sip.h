@@ -227,6 +227,8 @@
 #define DEFAULT_REGEXTENONQUALIFY FALSE
 #define DEFAULT_LEGACY_USEROPTION_PARSING FALSE
 #define DEFAULT_SEND_DIVERSION TRUE
+#define DEFAULT_SEND_OLI FALSE
+#define DEFAULT_FROM_TAGS_INSIDE FALSE
 #define DEFAULT_T1MIN             100   /*!< 100 MS for minimal roundtrip time */
 #define DEFAULT_MAX_CALL_BITRATE (384)  /*!< Max bitrate for video */
 #ifndef DEFAULT_USERAGENT
@@ -763,6 +765,8 @@ struct sip_settings {
 	int regextenonqualify;      /*!< Whether to add/remove regexten when qualifying peers */
 	int legacy_useroption_parsing; /*!< Whether to strip useroptions in URI via semicolons */
 	int send_diversion;	        /*!< Whether to Send SIP Diversion headers */
+	int send_oli;               /*!< Whether to Send ANI2/OLI */
+	int uri_parameters_instead; /*!< Whether to make customer parameters URI parameters instead of Header parameters */
 	int matchexternaddrlocally;   /*!< Match externaddr/externhost setting against localnet setting */
 	char regcontext[AST_MAX_CONTEXT];  /*!< Context for auto-extensions */
 	char messagecontext[AST_MAX_CONTEXT];  /*!< Default context for out of dialog msgs. */
@@ -859,6 +863,7 @@ struct sip_request {
 /*! \brief Parameters to the transmit_invite function */
 struct sip_invite_param {
 	int addsipheaders;          /*!< Add extra SIP headers */
+	int addsipparams;           /*!< Add extra SIP parameters to From header */
 	const char *uri_options;    /*!< URI options to add to the URI */
 	const char *vxml_url;       /*!< VXML url for Cisco phones */
 	char *auth;                 /*!< Authentication */

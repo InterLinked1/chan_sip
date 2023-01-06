@@ -311,6 +311,21 @@
 			<para>Changes the dtmfmode for a SIP call.</para>
 		</description>
 	</application>
+	<application name="SIPAddParameter" language="en_US">
+		<synopsis>
+			Add a SIP parameter to the From header in the outbound call.
+		</synopsis>
+		<syntax argsep=":">
+			<parameter name="Parameter" required="true" />
+			<parameter name="Content" required="true" />
+		</syntax>
+		<description>
+			<para>Adds a parameter to a SIP call placed with DIAL.</para>
+			<para>Use this with care. Adding the wrong tags may
+			jeopardize the SIP dialog.</para>
+			<para>Always returns <literal>0</literal>.</para>
+		</description>
+	</application>
 	<application name="SIPAddHeader" language="en_US">
 		<synopsis>
 			Add a SIP header to the outbound call.
@@ -326,6 +341,9 @@
 			Adding the wrong headers may jeopardize the SIP dialog.</para>
 			<para>Always returns <literal>0</literal>.</para>
 		</description>
+		<see-also>
+			<ref type="function">SIP_PARAMETER</ref>
+		</see-also>
 	</application>
 	<application name="SIPRemoveHeader" language="en_US">
 		<synopsis>
@@ -369,6 +387,28 @@
 			application is only available if TEST_FRAMEWORK is defined.</para>
 		</description>
 	</application>
+	<function name="SIP_PARAMETER" language="en_US">
+		<synopsis>
+			Gets the specified SIP parameter from the specified SIP header from an incoming INVITE message.
+		</synopsis>
+		<syntax>
+			<parameter name="parameter" required="true" />
+			<parameter name="name" required="true" />
+			<parameter name="number">
+				<para>If not specified, defaults to <literal>1</literal>.</para>
+			</parameter>
+		</syntax>
+		<description>
+			<para>This function returns the value of a SIP parameter in a specified header.</para>
+			<para>Since there are several headers (such as Via) which can occur multiple
+			times, SIP_PARAMETER takes an optional third argument to specify which header with
+			that name to retrieve. Headers start at offset <literal>1</literal>.</para>
+		</description>
+		<see-also>
+			<ref type="application">SIPAddParameter</ref>
+			<ref type="function">SIP_HEADERS</ref>
+		</see-also>
+	</function>
 	<function name="SIP_HEADER" language="en_US">
 		<synopsis>
 			Gets the specified SIP header from an incoming INVITE message.
@@ -1387,6 +1427,7 @@ static char *sip_do_debug(struct ast_cli_entry *e, int cmd, struct ast_cli_args 
 static char *sip_cli_notify(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a);
 static char *sip_set_history(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a);
 static int sip_dtmfmode(struct ast_channel *chan, const char *data);
+static int sip_addparam(struct ast_channel *chan, const char *data);
 static int sip_addheader(struct ast_channel *chan, const char *data);
 static int sip_do_reload(enum channelreloadreason reason);
 static char *sip_reload(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a);
@@ -6493,6 +6534,9 @@ static int sip_call(struct ast_channel *ast, const char *dest, int timeout)
 		} else if (!p->options->addsipheaders && !strncmp(ast_var_name(current), "SIPADDHEADER", strlen("SIPADDHEADER"))) {
 			/* Check whether there is a variable with a name starting with SIPADDHEADER */
 			p->options->addsipheaders = 1;
+		} else if (!p->options->addsipparams && !strncmp(ast_var_name(current), "SIPADDPARAMETER", strlen("SIPADDPARAMETER"))) {
+			/* Check whether there is a variable with a name starting with SIPADDPARAMETER */
+			p->options->addsipparams = 1;
 		} else if (!strcmp(ast_var_name(current), "SIPFROMDOMAIN")) {
 			ast_string_field_set(p, fromdomain, ast_var_value(current));
 		} else if (!strcmp(ast_var_name(current), "SIPTRANSFER")) {
@@ -14526,9 +14570,85 @@ static void initreqprep(struct sip_request *req, struct sip_pvt *p, int sipmetho
 	ourport = (p->fromdomainport && (p->fromdomainport != STANDARD_SIP_PORT)) ? p->fromdomainport : ast_sockaddr_port(&p->ourip);
 
 	if (!sip_standard_port(p->socket.type, ourport)) {
-		ret = ast_str_set(&from, 0, "<sip:%s@%s:%d>;tag=%s", tmp_l, d, ourport, p->tag);
+		ret = ast_str_set(&from, 0, "<sip:%s@%s:%d", tmp_l, d, ourport);
 	} else {
-		ret = ast_str_set(&from, 0, "<sip:%s@%s>;tag=%s", tmp_l, d, p->tag);
+		ret = ast_str_set(&from, 0, "<sip:%s@%s", tmp_l, d);
+	}
+
+	if (ret != AST_DYNSTR_BUILD_FAILED) {
+		/* The normal way is <sip:NUMBER@IP>;tag=SOMETHING;isup-oli=0;noa=1 (draft-haluska-dispatch-isup-oli-01)
+		 * Some carriers/Sonus/Genband/SS7 use <sip:NUMBER@IP;isup-oli=OLI;noa=1>;tag=SOMETHING instead (SIP-I/T)
+		 */
+		if (!sip_cfg.uri_parameters_instead) {
+			/* typically, tag should come before custom parameters, but if we're doing it carrier-style, it still comes last */
+			ret = ast_str_append(&from, 0, ">;tag=%s", p->tag);
+		}
+
+		/* Add custom parameters now */
+		if (ret != AST_DYNSTR_BUILD_FAILED && p->owner && sip_cfg.send_oli) {
+			ast_debug(3, "Detected ANI2/OLI %d on channel %s\n", ast_channel_caller(p->owner)->ani2, ast_channel_name(p->owner));
+			ret = ast_str_append(&from, 0, ";isup-oli=%d", ast_channel_caller(p->owner)->ani2);
+		}
+		if (ret != AST_DYNSTR_BUILD_FAILED && p->owner && p->options && p->options->addsipparams) {
+			struct ast_channel *chan = p->owner; /* The owner channel */
+			struct varshead *headp;
+
+			ast_channel_lock(chan);
+
+			headp = ast_channel_varshead(chan);
+
+			if (!headp) {
+				ast_log(LOG_WARNING, "No Headp for the channel...ooops!\n");
+			} else {
+				const struct ast_var_t *current;
+				AST_LIST_TRAVERSE(headp, current, entries) {
+					/* SIPADDPARAMETER: Add SIP parameter to From header in outgoing call */
+					if (!strncmp(ast_var_name(current), "SIPADDPARAMETER", strlen("SIPADDPARAMETER"))) {
+						char *content, *end;
+						const char *tag = ast_var_value(current);
+						char *headdup = ast_malloc(sizeof(tag));
+						if (!headdup) {
+							ast_log(LOG_ERROR, "Couldn't allocate tag\n");
+							break;
+						}
+						ast_copy_string(headdup, tag, strlen(tag) + 1);
+
+						/* Strip off the starting " (if it's there) */
+						if (*headdup == '"') {
+							headdup++;
+						}
+						if ((content = strchr(headdup, ':'))) {
+							*content = '\0';
+							content++;
+							content = ast_skip_blanks(content); /* Skip white space */
+							/* Strip the ending " (if it's there) */
+							end = content + strlen(content) -1;
+							if (*end == '"') {
+								*end = '\0';
+							}
+							if (sipdebug) {
+								ast_debug(3, "Adding SIP parameter \"%s\" to %s header with content: %s\n", headdup, "From", content);
+							}
+							ret = ast_str_append(&from, 0, ";%s=%s", headdup, content);
+							ast_free(headdup);
+							if (ret == AST_DYNSTR_BUILD_FAILED) {
+								ast_log(LOG_WARNING, "Appending failed, aborting custom SIP parameters\n");
+								break;
+							}
+						} else {
+							ast_debug(1, "Nothing to do for parameters %s\n", headdup);
+							ast_free(headdup);
+						}
+					}
+				}
+			}
+
+			ast_channel_unlock(chan);
+		}
+		/* Now, finish it off, if needed */
+		if (ret != AST_DYNSTR_BUILD_FAILED && sip_cfg.uri_parameters_instead) {
+			ret = ast_str_append(&from, 0, ">;tag=%s", p->tag);
+		}
 	}
 	if (ret == AST_DYNSTR_BUILD_FAILED) {
 		/* We don't have an escape path from here... */
@@ -21946,6 +22066,8 @@ static char *sip_show_settings(struct ast_cli_entry *e, int cmd, struct ast_cli_
 	ast_cli(a->fd, "  Send RPID:              %s\n", AST_CLI_YESNO(ast_test_flag(&global_flags[0], SIP_SENDRPID)));
 	ast_cli(a->fd, "  Legacy userfield parse: %s\n", AST_CLI_YESNO(sip_cfg.legacy_useroption_parsing));
 	ast_cli(a->fd, "  Send Diversion:         %s\n", AST_CLI_YESNO(sip_cfg.send_diversion));
+	ast_cli(a->fd, "  Send OLI:               %s\n", AST_CLI_YESNO(sip_cfg.send_oli));
+	ast_cli(a->fd, "  From Tags Inside:       %s\n", AST_CLI_YESNO(sip_cfg.uri_parameters_instead));
 	ast_cli(a->fd, "  Caller ID:              %s\n", default_callerid);
 	if ((default_fromdomainport) && (default_fromdomainport != STANDARD_SIP_PORT)) {
 		ast_cli(a->fd, "  From: Domain:           %s:%d\n", default_fromdomain, default_fromdomainport);
@@ -23255,6 +23377,93 @@ static int build_reply_digest(struct sip_pvt *p, int method, char* digest, int d
 	}
 	return 0;
 }
+
+/*! \brief Read SIP parameters from header (dialplan function) */
+static int func_param_read(struct ast_channel *chan, const char *function, char *data, char *buf, size_t len)
+{
+	struct sip_pvt *p;
+	const char *content = NULL;
+	char *mutable_data = ast_strdupa(data);
+	AST_DECLARE_APP_ARGS(args,
+		AST_APP_ARG(tag);
+		AST_APP_ARG(header);
+		AST_APP_ARG(number);
+	);
+	int i, number, start = 0;
+	char *tagname = NULL;
+	char *tagfull = NULL;
+	char *tagvalue = NULL;
+
+	if (!chan) {
+		ast_log(LOG_WARNING, "No channel was provided to %s function.\n", function);
+		return -1;
+	}
+
+	if (ast_strlen_zero(data)) {
+		ast_log(LOG_WARNING, "This function requires a header name.\n");
+		return -1;
+	}
+
+	ast_channel_lock(chan);
+	if (!IS_SIP_TECH(ast_channel_tech(chan))) {
+		ast_log(LOG_WARNING, "This function can only be used on SIP channels.\n");
+		ast_channel_unlock(chan);
+		return -1;
+	}
+
+	AST_STANDARD_APP_ARGS(args, mutable_data);
+	if (!args.number) {
+		number = 1;
+	} else {
+		sscanf(args.number, "%30d", &number);
+		if (number < 1)
+			number = 1;
+	}
+
+	p = ast_channel_tech_pvt(chan);
+
+	/* If there is no private structure, this channel is no longer alive */
+	if (!p) {
+		ast_channel_unlock(chan);
+		return -1;
+	}
+
+	for (i = 0; i < number; i++) {
+		content = __get_header(&p->initreq, args.header, &start);
+	}
+
+	if (ast_strlen_zero(content)) {
+		ast_channel_unlock(chan);
+		return -1;
+	}
+
+	tagname = ast_strdupa(args.tag);
+	tagfull = ast_strdupa(content);
+
+	/* discard the first match, because it's not a tag. */
+	tagvalue = strsep(&tagfull, ";");
+	while (tagvalue && (tagvalue = strsep(&tagfull, ";"))) {
+		ast_debug(3, "%s: Looking for %s, found: %s\n", function, tagname, tagvalue);
+		if (!strncmp(tagname, tagvalue, strlen(tagname))) {
+			/* we found our tag */
+			const char *result = strchr(tagvalue, '=') + 1;
+			if (!result) {
+				continue;
+			}
+			ast_copy_string(buf, result, len);
+			ast_channel_unlock(chan);
+			return 0;
+		}
+	}
+
+	ast_channel_unlock(chan);
+	return 0;
+}
+
+static struct ast_custom_function sip_param_function = {
+	.name = "SIP_PARAMETER",
+	.read = func_param_read,
+};
 
 /*! \brief Read SIP header (dialplan function) */
 static int func_header_read(struct ast_channel *chan, const char *function, char *data, char *buf, size_t len)
@@ -32683,6 +32892,8 @@ static int reload_config(enum channelreloadreason reason)
 	sip_cfg.regextenonqualify = DEFAULT_REGEXTENONQUALIFY;
 	sip_cfg.legacy_useroption_parsing = DEFAULT_LEGACY_USEROPTION_PARSING;
 	sip_cfg.send_diversion = DEFAULT_SEND_DIVERSION;
+	sip_cfg.send_oli = DEFAULT_SEND_OLI;
+	sip_cfg.uri_parameters_instead = DEFAULT_FROM_TAGS_INSIDE;
 	sip_cfg.notifyringing = DEFAULT_NOTIFYRINGING;
 	sip_cfg.notifycid = DEFAULT_NOTIFYCID;
 	sip_cfg.notifyhold = FALSE;		/*!< Keep track of hold status for a peer */
@@ -33010,6 +33221,10 @@ static int reload_config(enum channelreloadreason reason)
 			sip_cfg.legacy_useroption_parsing = ast_true(v->value);
 		} else if (!strcasecmp(v->name, "send_diversion")) {
 			sip_cfg.send_diversion = ast_true(v->value);
+		} else if (!strcasecmp(v->name, "send_oli")) {
+			sip_cfg.send_oli = ast_true(v->value);
+		} else if (!strcasecmp(v->name, "uri_parameters_instead")) {
+			sip_cfg.uri_parameters_instead = ast_true(v->value);
 		} else if (!strcasecmp(v->name, "callerid")) {
 			ast_copy_string(default_callerid, v->value, sizeof(default_callerid));
 		} else if (!strcasecmp(v->name, "mwi_from")) {
@@ -34032,6 +34247,7 @@ static struct ast_rtp_glue sip_rtp_glue = {
 };
 
 static char *app_dtmfmode = "SIPDtmfMode";
+static char *app_sipaddparam = "SIPAddParameter";
 static char *app_sipaddheader = "SIPAddHeader";
 static char *app_sipremoveheader = "SIPRemoveHeader";
 #ifdef TEST_FRAMEWORK
@@ -34088,6 +34304,46 @@ static int sip_dtmfmode(struct ast_channel *chan, const char *data)
 		disable_dsp_detect(p);
 	}
 	sip_pvt_unlock(p);
+	ast_channel_unlock(chan);
+	return 0;
+}
+
+/*! \brief Add a SIP parameter to the From header in an outbound INVITE */
+static int sip_addparam(struct ast_channel *chan, const char *data)
+{
+	int no = 0;
+	int ok = FALSE;
+	char varbuf[30];
+	const char *inbuf = data;
+	char *subbuf;
+
+	if (ast_strlen_zero(inbuf)) {
+		ast_log(LOG_WARNING, "This application requires the argument: Tag\n");
+		return 0;
+	}
+	ast_channel_lock(chan);
+
+	/* Check for headers */
+	while (!ok && no <= 99) {
+		no++;
+		snprintf(varbuf, sizeof(varbuf), "__SIPADDPARAMETER%.2d", no);
+
+		/* Compare without the leading underscores */
+		if ((pbx_builtin_getvar_helper(chan, (const char *) varbuf + 2) == (const char *) NULL)) {
+			ok = TRUE;
+		}
+	}
+	if (ok) {
+		size_t len = strlen(inbuf);
+		subbuf = ast_alloca(len + 1);
+		ast_get_encoded_str(inbuf, subbuf, len + 1);
+		pbx_builtin_setvar_helper(chan, varbuf, subbuf);
+		if (sipdebug) {
+			ast_debug(1, "SIP Parameter added \"%s\" as %s\n", inbuf, varbuf);
+		}
+	} else {
+		ast_log(LOG_WARNING, "Too many SIP parameters added, max 100\n");
+	}
 	ast_channel_unlock(chan);
 	return 0;
 }
@@ -35632,6 +35888,7 @@ static int load_module(void)
 
 	/* Register dialplan applications */
 	ast_register_application_xml(app_dtmfmode, sip_dtmfmode);
+	ast_register_application_xml(app_sipaddparam, sip_addparam);
 	ast_register_application_xml(app_sipaddheader, sip_addheader);
 	ast_register_application_xml(app_sipremoveheader, sip_removeheader);
 #ifdef TEST_FRAMEWORK
@@ -35639,6 +35896,7 @@ static int load_module(void)
 #endif
 
 	/* Register dialplan functions */
+	ast_custom_function_register(&sip_param_function);
 	ast_custom_function_register(&sip_header_function);
 	ast_custom_function_register(&sip_headers_function);
 	ast_custom_function_register(&sippeer_function);
@@ -35751,10 +36009,12 @@ static int unload_module(void)
 	ast_custom_function_unregister(&sippeer_function);
 	ast_custom_function_unregister(&sip_headers_function);
 	ast_custom_function_unregister(&sip_header_function);
+	ast_custom_function_unregister(&sip_param_function);
 	ast_custom_function_unregister(&checksipdomain_function);
 
 	/* Unregister dial plan applications */
 	ast_unregister_application(app_dtmfmode);
+	ast_unregister_application(app_sipaddparam);
 	ast_unregister_application(app_sipaddheader);
 	ast_unregister_application(app_sipremoveheader);
 #ifdef TEST_FRAMEWORK
