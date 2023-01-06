@@ -29,12 +29,12 @@ jobs:
        run: |
           echo Beginning build
           cd /usr/src
-          git clone https://github.com/asterisk/asterisk.git
+          sudo git clone https://github.com/asterisk/asterisk.git
           cd asterisk
-          wget https://raw.githubusercontent.com/InterLinked1/chan_sip/master/chan_sip_reinclude.sh
-          chmod +x chan_sip_reinclude.sh
-          ./chan_sip_reinclude.sh
-          ./configure --enable-dev-mode --with-jansson-bundled
-          make menuselect.makeopts
-          menuselect/menuselect --enable chan_sip menuselect.makeopts
-          make channels
+          sudo wget https://raw.githubusercontent.com/InterLinked1/chan_sip/master/chan_sip_reinclude.sh
+          sudo chmod +x chan_sip_reinclude.sh
+          sudo ./chan_sip_reinclude.sh
+          sudo ./configure --enable-dev-mode --with-jansson-bundled
+          sudo make menuselect.makeopts
+          sudo menuselect/menuselect --enable chan_sip menuselect.makeopts
+          sudo make channels
