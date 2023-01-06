@@ -1,0 +1,40 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  vm:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+     - name: Checkout
+       uses: actions/checkout@v2
+     # Runs a set of commands using the runners shell
+     # Intentionally installs directly, rather than using PhreakScript, for a more targeted CI
+     - name: Start build
+       run: |
+          echo Beginning build
+          cd /usr/src
+          git clone https://github.com/asterisk/asterisk.git
+          cd asterisk
+          wget https://raw.githubusercontent.com/InterLinked1/chan_sip/master/chan_sip_reinclude.sh
+          chmod +x chan_sip_reinclude.sh
+          ./chan_sip_reinclude.sh
+          ./configure --enable-dev-mode --with-jansson-bundled
+          make menuselect.makeopts
+          menuselect/menuselect --enable chan_sip menuselect.makeopts
+          make channels
