@@ -1,0 +1,22 @@
+diff --git a/tests/channels/tests.yaml b/tests/channels/tests.yaml
+index d3416349..fb7f2b73 100644
+--- a/tests/channels/tests.yaml
++++ b/tests/channels/tests.yaml
+@@ -1,5 +1,6 @@
+ # Enter tests here in the order they should be considered for execution:
+ tests:
++    - dir: 'SIP'
+     - dir: 'iax2'
+     - dir: 'local'
+     - dir: 'pjsip'
+diff --git a/tests/fax/tests.yaml b/tests/fax/tests.yaml
+index 4f7e5dc9..c344c517 100644
+--- a/tests/fax/tests.yaml
++++ b/tests/fax/tests.yaml
+@@ -1,3 +1,4 @@
+ # Enter tests here in the order they should be considered for execution:
+ tests:
+-    - dir: 'pjsip'
+\ No newline at end of file
++    - dir: 'sip'
++    - dir: 'pjsip'
