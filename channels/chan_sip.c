@@ -8852,7 +8852,7 @@ static struct ast_frame *sip_read(struct ast_channel *ast)
 	/* If we detect a CNG tone and fax detection is enabled then send us off to the fax extension */
 	if (faxdetected && ast_test_flag(&p->flags[1], SIP_PAGE2_FAX_DETECT_CNG)) {
 		if (strcmp(ast_channel_exten(ast), "fax")) {
-			const char *target_context = S_OR(ast_channel_macrocontext(ast), ast_channel_context(ast));
+			const char *target_context = ast_channel_context(ast);
 			/*
 			 * We need to unlock 'ast' here because
 			 * ast_exists_extension has the potential to start and
@@ -11289,7 +11289,7 @@ static int process_sdp(struct sip_pvt *p, struct sip_request *req, int t38action
 					} else {
 						ast_channel_lock(p->owner);
 						if (strcmp(ast_channel_exten(p->owner), "fax")) {
-							const char *target_context = S_OR(ast_channel_macrocontext(p->owner), ast_channel_context(p->owner));
+							const char *target_context = ast_channel_context(p->owner);
 							ast_channel_unlock(p->owner);
 							if (ast_exists_extension(p->owner, target_context, "fax", 1,
 								S_COR(ast_channel_caller(p->owner)->id.number.valid, ast_channel_caller(p->owner)->id.number.str, NULL))) {
@@ -19205,9 +19205,6 @@ static int get_refer_info(struct sip_pvt *transferer, struct sip_request *outgoi
 	if (transferer->owner) {
 		/* By default, use the context in the channel sending the REFER */
 		transfer_context = pbx_builtin_getvar_helper(transferer->owner, "TRANSFER_CONTEXT");
-		if (ast_strlen_zero(transfer_context)) {
-			transfer_context = ast_channel_macrocontext(transferer->owner);
-		}
 	}
 	if (ast_strlen_zero(transfer_context)) {
 		transfer_context = S_OR(transferer->context, sip_cfg.default_context);
@@ -19269,9 +19266,6 @@ static int get_also_info(struct sip_pvt *p, struct sip_request *oreq)
 	if (p->owner) {
 		/* By default, use the context in the channel sending the REFER */
 		transfer_context = pbx_builtin_getvar_helper(p->owner, "TRANSFER_CONTEXT");
-		if (ast_strlen_zero(transfer_context)) {
-			transfer_context = ast_channel_macrocontext(p->owner);
-		}
 	}
 	if (ast_strlen_zero(transfer_context)) {
 		transfer_context = S_OR(p->context, sip_cfg.default_context);
