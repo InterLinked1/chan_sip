@@ -31,7 +31,8 @@ jobs:
           sudo apt-get install -y libedit-dev
           cd /usr/src
           sudo git clone https://github.com/asterisk/asterisk.git
-          cd asterisk
+          mv asterisk asterisk-master
+          cd asterisk-master
           sudo wget https://raw.githubusercontent.com/InterLinked1/chan_sip/master/chan_sip_reinclude.sh
           sudo chmod +x chan_sip_reinclude.sh
           sudo ./chan_sip_reinclude.sh
