@@ -53,7 +53,7 @@ jobs:
           sudo cp -r /usr/src/chan_sip/testsuite/tests/channels/SIP/ /usr/src/testsuite/tests/channels
           sudo cp -r /usr/src/chan_sip/testsuite/tests/fax/sip /usr/src/testsuite/tests/fax
           sudo cp /usr/src/chan_sip/testsuite/tests.diff /usr/src/testsuite
-          sudo cd /usr/src/testsuite
+          cd /usr/src/testsuite
           sudo git apply tests.diff
           sudo ./runInVenv.sh python3 /usr/src/testsuite/runtests.py --test=tests/channels/SIP
           sudo ./runInVenv.sh python3 /usr/src/testsuite/runtests.py --test=tests/fax/sip
