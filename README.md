@@ -34,6 +34,8 @@ This is not a fork of Asterisk itself with `chan_sip` still in it. It is, in fac
 
 This version of `chan_sip` was forked from chan_sip immediately prior to the commit removing it. However, it has since diverged and includes a number of improvements that were not merged into Asterisk previously or have been developed since then. These changes are stated below to make it clear what has changed.
 
+The `chan_sip` unit tests are from the Asterisk test suite prior to removal: https://gerrit.asterisk.org/c/testsuite/+/19612
+
 ### Changes
 
 - Support for custom parameters (`SIPAddParameter` application; `SIP_PARAMETER` function; `send_oli`, `uri_parameters_instead` sip.conf config options). This functionality is now also available in `chan_pjsip`. This is included in PhreakScript for all versions. Initial patch: https://github.com/InterLinked1/phreakscript/blob/master/patches/sipcustparams.patch and abandoned code review: https://gerrit.asterisk.org/c/asterisk/+/16569
@@ -41,6 +43,8 @@ This version of `chan_sip` was forked from chan_sip immediately prior to the com
 - Support for fax control. This functionality has also been available in `chan_pjsip`. This is included in PhreakScript for all versions. Initial patch: https://github.com/InterLinked1/phreakscript/blob/master/patches/sipfaxcontrol.diff
 
 - Support for Homer (HEP) in `chan_sip`. This functionality has also been available in `chan_pjsip`.
+
+- Support for macros has been removed per the Asterisk deprecation policy
 
 All this said, as both an Asterisk user and developer myself, I recommend you migrate to `chan_pjsip` if you don't have a good reason not to. It will likely serve your needs better. If, however, you still need or prefer `chan_sip`, then this repo is for you.
 
@@ -60,6 +64,6 @@ Improvements or new features are accepted to this repo. However, having learned 
 
 #### To-Do List
 
-- Add `chan_sip`'s unit tests once they are removed: https://gerrit.asterisk.org/c/testsuite/+/19612
+- Actually run `chan_sip`'s unit tests as part of the CI. Currently disabled as SIPP 3.5.2 doesn't compile on the Ubuntu GitHub runner.
 
 - The usecallmanager patches are not currently incorporated here because they present a huge merge conflict.

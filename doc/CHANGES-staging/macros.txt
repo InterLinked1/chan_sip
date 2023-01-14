@@ -1,0 +1,4 @@
+Subject: chan_sip
+
+Support for macros has been removed,
+per the Asterisk deprecation policy.
