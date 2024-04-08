@@ -64,6 +64,4 @@ Improvements or new features are accepted to this repo. However, having learned 
 
 #### To-Do List
 
-- Actually run `chan_sip`'s unit tests as part of the CI. Currently disabled as SIPP 3.5.2 doesn't compile on the Ubuntu GitHub runner: https://issues.asterisk.org/jira/browse/ASTERISK-30395
-
 - The usecallmanager patches are not currently incorporated here because they present a huge merge conflict.
