@@ -1,10 +1,6 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
   push:
     branches: [ master ]
   pull_request:
@@ -16,52 +12,83 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  vm:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-    container: debian:12
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+  ubuntu-latest:
+    runs-on: ubuntu-24.04
+    name: Ubuntu 24.04
     steps:
      - name: Checkout
-       uses: actions/checkout@v2
-     # Runs a set of commands using the runners shell
-     # Intentionally installs directly, rather than using PhreakScript, for a more targeted CI
-     - name: Build chan_sip
+       uses: actions/checkout@v4
+     - name: Install required packages
        run: |
-          echo Beginning build
+          sudo apt-get update -y
+          sudo apt-get install -y libedit-dev git wget
+     - name: Build minimal Asterisk with chan_sip
+       run: |
+          sudo cp -r . /usr/src/chan_sip
+          cd /usr/src
+          sudo git clone --depth 1 https://github.com/asterisk/asterisk.git
+          sudo mv asterisk asterisk-master
+          cd asterisk-master
+          sudo cp /usr/src/chan_sip/chan_sip_reinclude.sh .
+          sudo chmod +x chan_sip_reinclude.sh
+          sudo ./chan_sip_reinclude.sh
+          sudo ./contrib/scripts/install_prereq install
+          sudo ./configure --enable-dev-mode --with-jansson-bundled
+          sudo make menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_ADDONS --disable-category MENUSELECT_APPS menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_CDR --disable-category MENUSELECT_CEL menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_CHANNELS --disable-category MENUSELECT_CODECS menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_FORMATS --disable-category MENUSELECT_FUNCS --disable-category MENUSELECT_PBX --disable-category MENUSELECT_RES menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_TESTS --disable-category MENUSELECT_CFLAGS menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_UTILS --disable-category MENUSELECT_AGIS menuselect.makeopts
+          sudo menuselect/menuselect --enable chan_sip menuselect.makeopts
+          sudo make channels
+  debian-stable:
+    runs-on: ubuntu-24.04
+    name: Debian 12 (with tests)
+    container: debian:12
+    steps:
+     - name: Checkout
+       uses: actions/checkout@v4
+     - name: Install required packages
+       run: |
           apt-get update -y
           apt-get install -y libedit-dev git wget
+     - name: Build full Asterisk with chan_sip
+       run: |
+          cp -r . /usr/src/chan_sip
           cd /usr/src
+          ls -la
+          ls -la chan_sip
           git clone --depth 1 https://github.com/asterisk/asterisk.git
           mv asterisk asterisk-master
           cd asterisk-master
-          wget https://raw.githubusercontent.com/InterLinked1/chan_sip/master/chan_sip_reinclude.sh
+          cp /usr/src/chan_sip/chan_sip_reinclude.sh .
           chmod +x chan_sip_reinclude.sh
           ./chan_sip_reinclude.sh
           ./contrib/scripts/install_prereq install
-          ./configure --enable-dev-mode --with-jansson-bundled
+          ./configure --enable-dev-mode --with-jansson-bundled --with-pjproject-bundled
           make menuselect.makeopts
           menuselect/menuselect --enable chan_sip menuselect.makeopts
           menuselect/menuselect --disable res_pjsip --disable chan_pjsip menuselect.makeopts
           menuselect/menuselect --disable pbx_ael --disable pbx_lua menuselect.makeopts
           make channels
-          make
+          make -j2
+     - name: Install Asterisk
+       run: |
+          # Each run step resets the working directory, so change back
+          cd /usr/src/asterisk-master
           make install
           make samples
           sed -i 's/noload = chan_sip.so/load = chan_sip.so/' /etc/asterisk/modules.conf
-     - name: Install PhreakScript
-       run: |
-          wget https://raw.githubusercontent.com/InterLinked1/phreakscript/master/phreaknet.sh
-          # Create on same partition to avoid invalid cross-device link error
-          mv phreaknet.sh /usr/local/src
-          chmod +x /usr/local/src/phreaknet.sh
-          /usr/local/src/phreaknet.sh make
      - name: Build test suite
        run: |
-          phreaknet installts
+          cd /usr/src/
+          git clone --depth 1 https://github.com/asterisk/testsuite.git
+          cd testsuite
+          ./contrib/scripts/install_prereq install
+          ./setupVenv.sh
           cp -r /usr/src/chan_sip/testsuite/tests/channels/SIP/ /usr/src/testsuite/tests/channels
           cp -r /usr/src/chan_sip/testsuite/tests/fax/sip /usr/src/testsuite/tests/fax
           cp /usr/src/chan_sip/testsuite/tests.diff /usr/src/testsuite
@@ -77,3 +104,66 @@ jobs:
           # Skip sip_tls_call and sip_tls_register since those fail out of the box
           ./runInVenv.sh python3 /usr/src/testsuite/runtests.py --test=tests/channels/SIP -T "sip_tls_*"
           ./runInVenv.sh python3 /usr/src/testsuite/runtests.py --test=tests/fax/sip
+  opensuse:
+    runs-on: ubuntu-24.04
+    name: openSUSE Tumbleweed
+    container: opensuse/tumbleweed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install required packages
+        run: |
+          zypper install -y git-core make patch gawk subversion bzip2 gcc-c++ libedit-devel libuuid-devel libxml2-devel sqlite3-devel
+      - name: Build minimal Asterisk with chan_sip
+        run: |
+          cp -r . /usr/src/chan_sip
+          cd /usr/src
+          git clone --depth 1 https://github.com/asterisk/asterisk.git
+          mv asterisk asterisk-master
+          cd asterisk-master
+          cp /usr/src/chan_sip/chan_sip_reinclude.sh .
+          chmod +x chan_sip_reinclude.sh
+          ./chan_sip_reinclude.sh
+          ./contrib/scripts/install_prereq install
+          ./configure --enable-dev-mode --with-jansson-bundled
+          make menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_ADDONS --disable-category MENUSELECT_APPS menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_CDR --disable-category MENUSELECT_CEL menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_CHANNELS --disable-category MENUSELECT_CODECS menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_FORMATS --disable-category MENUSELECT_FUNCS --disable-category MENUSELECT_PBX --disable-category MENUSELECT_RES menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_TESTS --disable-category MENUSELECT_CFLAGS menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_UTILS --disable-category MENUSELECT_AGIS menuselect.makeopts
+          menuselect/menuselect --enable chan_sip menuselect.makeopts
+          make channels
+  archlinux:
+    runs-on: ubuntu-24.04
+    name: Arch Linux
+    container: archlinux:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install required packages
+        run: |
+          pacman -Syu --noconfirm
+          pacman -Sy --noconfirm wget git make patch bzip2 subversion gcc pkg-config autoconf automake m4 libtool libedit jansson libutil-linux libxml2 sqlite
+      - name: Build minimal Asterisk with chan_sip
+        run: |
+          cp -r . /usr/src/chan_sip
+          cd /usr/src
+          git clone --depth 1 https://github.com/asterisk/asterisk.git
+          mv asterisk asterisk-master
+          cd asterisk-master
+          cp /usr/src/chan_sip/chan_sip_reinclude.sh .
+          chmod +x chan_sip_reinclude.sh
+          ./chan_sip_reinclude.sh
+          # Do not run the Asterisk install_prereq script since that causes this build to fail for Arch Linux
+          ./configure --enable-dev-mode --with-jansson-bundled
+          make menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_ADDONS --disable-category MENUSELECT_APPS menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_CDR --disable-category MENUSELECT_CEL menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_CHANNELS --disable-category MENUSELECT_CODECS menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_FORMATS --disable-category MENUSELECT_FUNCS --disable-category MENUSELECT_PBX --disable-category MENUSELECT_RES menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_TESTS --disable-category MENUSELECT_CFLAGS menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_UTILS --disable-category MENUSELECT_AGIS menuselect.makeopts
+          menuselect/menuselect --enable chan_sip menuselect.makeopts
+          make channels
