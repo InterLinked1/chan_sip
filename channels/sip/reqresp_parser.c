@@ -257,6 +257,8 @@ int parse_uri_full(char *uri, const char *scheme, char **user, char **pass,
 }
 
 #ifdef TEST_FRAMEWORK
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-pointer="
 AST_TEST_DEFINE(sip_parse_uri_full_test)
 {
 	int res = AST_TEST_PASS;
@@ -2635,6 +2637,7 @@ AST_TEST_DEFINE(parse_via_test)
 	}
 	return res;
 }
+#pragma GCC diagnostic pop /* -Wdangling-pointer= */
 #endif
 
 void sip_request_parser_register_tests(void)
