@@ -42,6 +42,7 @@ jobs:
           sudo menuselect/menuselect --disable-category MENUSELECT_FORMATS --disable-category MENUSELECT_FUNCS --disable-category MENUSELECT_PBX --disable-category MENUSELECT_RES menuselect.makeopts
           sudo menuselect/menuselect --disable-category MENUSELECT_TESTS --disable-category MENUSELECT_CFLAGS menuselect.makeopts
           sudo menuselect/menuselect --disable-category MENUSELECT_UTILS --disable-category MENUSELECT_AGIS menuselect.makeopts
+          sudo menuselect/menuselect --enable TEST_FRAMEWORK --enable-category MENUSELECT_TESTS menuselect.makeopts
           sudo menuselect/menuselect --enable chan_sip menuselect.makeopts
           sudo make channels
   debian-stable:
@@ -70,9 +71,10 @@ jobs:
           ./contrib/scripts/install_prereq install
           ./configure --enable-dev-mode --with-jansson-bundled --with-pjproject-bundled
           make menuselect.makeopts
-          menuselect/menuselect --enable chan_sip menuselect.makeopts
           menuselect/menuselect --disable res_pjsip --disable chan_pjsip menuselect.makeopts
           menuselect/menuselect --disable pbx_ael --disable pbx_lua menuselect.makeopts
+          menuselect/menuselect --enable TEST_FRAMEWORK --enable-category MENUSELECT_TESTS menuselect.makeopts
+          menuselect/menuselect --enable chan_sip menuselect.makeopts
           make channels
           make -j2
      - name: Install Asterisk
@@ -133,6 +135,7 @@ jobs:
           menuselect/menuselect --disable-category MENUSELECT_FORMATS --disable-category MENUSELECT_FUNCS --disable-category MENUSELECT_PBX --disable-category MENUSELECT_RES menuselect.makeopts
           menuselect/menuselect --disable-category MENUSELECT_TESTS --disable-category MENUSELECT_CFLAGS menuselect.makeopts
           menuselect/menuselect --disable-category MENUSELECT_UTILS --disable-category MENUSELECT_AGIS menuselect.makeopts
+          menuselect/menuselect --enable TEST_FRAMEWORK --enable-category MENUSELECT_TESTS menuselect.makeopts
           menuselect/menuselect --enable chan_sip menuselect.makeopts
           make channels
   archlinux:
@@ -165,5 +168,6 @@ jobs:
           menuselect/menuselect --disable-category MENUSELECT_FORMATS --disable-category MENUSELECT_FUNCS --disable-category MENUSELECT_PBX --disable-category MENUSELECT_RES menuselect.makeopts
           menuselect/menuselect --disable-category MENUSELECT_TESTS --disable-category MENUSELECT_CFLAGS menuselect.makeopts
           menuselect/menuselect --disable-category MENUSELECT_UTILS --disable-category MENUSELECT_AGIS menuselect.makeopts
+          menuselect/menuselect --enable TEST_FRAMEWORK --enable-category MENUSELECT_TESTS menuselect.makeopts
           menuselect/menuselect --enable chan_sip menuselect.makeopts
           make channels
