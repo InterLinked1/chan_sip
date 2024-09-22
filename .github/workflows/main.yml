@@ -45,6 +45,38 @@ jobs:
           sudo menuselect/menuselect --enable TEST_FRAMEWORK --enable-category MENUSELECT_TESTS menuselect.makeopts
           sudo menuselect/menuselect --enable chan_sip menuselect.makeopts
           sudo make channels
+  ubuntu-stable:
+    runs-on: ubuntu-22.04
+    name: Ubuntu 22.04
+    steps:
+     - name: Checkout
+       uses: actions/checkout@v4
+     - name: Install required packages
+       run: |
+          sudo apt-get update -y
+          sudo apt-get install -y libedit-dev git wget
+     - name: Build minimal Asterisk with chan_sip
+       run: |
+          sudo cp -r . /usr/src/chan_sip
+          cd /usr/src
+          sudo git clone --depth 1 https://github.com/asterisk/asterisk.git
+          sudo mv asterisk asterisk-master
+          cd asterisk-master
+          sudo cp /usr/src/chan_sip/chan_sip_reinclude.sh .
+          sudo chmod +x chan_sip_reinclude.sh
+          sudo ./chan_sip_reinclude.sh
+          sudo ./contrib/scripts/install_prereq install
+          sudo ./configure --enable-dev-mode --with-jansson-bundled
+          sudo make menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_ADDONS --disable-category MENUSELECT_APPS menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_CDR --disable-category MENUSELECT_CEL menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_CHANNELS --disable-category MENUSELECT_CODECS menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_FORMATS --disable-category MENUSELECT_FUNCS --disable-category MENUSELECT_PBX --disable-category MENUSELECT_RES menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_TESTS --disable-category MENUSELECT_CFLAGS menuselect.makeopts
+          sudo menuselect/menuselect --disable-category MENUSELECT_UTILS --disable-category MENUSELECT_AGIS menuselect.makeopts
+          sudo menuselect/menuselect --enable TEST_FRAMEWORK --enable-category MENUSELECT_TESTS menuselect.makeopts
+          sudo menuselect/menuselect --enable chan_sip menuselect.makeopts
+          sudo make channels
   debian-stable:
     runs-on: ubuntu-24.04
     name: Debian 12 (with tests)
@@ -106,6 +138,38 @@ jobs:
           # Skip sip_tls_call and sip_tls_register since those fail out of the box
           ./runInVenv.sh python3 /usr/src/testsuite/runtests.py --test=tests/channels/SIP -T "sip_tls_*"
           ./runInVenv.sh python3 /usr/src/testsuite/runtests.py --test=tests/fax/sip
+  rocky-9:
+    runs-on: ubuntu-24.04
+    name: Rocky Linux 9
+    container: rockylinux:9.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install required packages
+        run: |
+          dnf install -y git patch subversion gcc gcc-c++ pkg-config autoconf automake m4 libtool libuuid-devel libxml2-devel sqlite-devel
+      - name: Build minimal Asterisk with chan_sip
+        run: |
+          cp -r . /usr/src/chan_sip
+          cd /usr/src
+          git clone --depth 1 https://github.com/asterisk/asterisk.git
+          mv asterisk asterisk-master
+          cd asterisk-master
+          cp /usr/src/chan_sip/chan_sip_reinclude.sh .
+          chmod +x chan_sip_reinclude.sh
+          ./chan_sip_reinclude.sh
+          ./contrib/scripts/install_prereq install
+          ./configure --enable-dev-mode --with-jansson-bundled
+          make menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_ADDONS --disable-category MENUSELECT_APPS menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_CDR --disable-category MENUSELECT_CEL menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_CHANNELS --disable-category MENUSELECT_CODECS menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_FORMATS --disable-category MENUSELECT_FUNCS --disable-category MENUSELECT_PBX --disable-category MENUSELECT_RES menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_TESTS --disable-category MENUSELECT_CFLAGS menuselect.makeopts
+          menuselect/menuselect --disable-category MENUSELECT_UTILS --disable-category MENUSELECT_AGIS menuselect.makeopts
+          menuselect/menuselect --enable TEST_FRAMEWORK --enable-category MENUSELECT_TESTS menuselect.makeopts
+          menuselect/menuselect --enable chan_sip menuselect.makeopts
+          make channels
   opensuse:
     runs-on: ubuntu-24.04
     name: openSUSE Tumbleweed
