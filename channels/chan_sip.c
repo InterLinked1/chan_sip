@@ -21944,8 +21944,8 @@ static char *sip_unregister(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 /*! \brief Callback for show_chanstats */
 static int show_chanstats_cb(struct sip_pvt *cur, struct __show_chan_arg *arg)
 {
-#define FORMAT2 "%-15.15s  %-11.11s  %-8.8s %-10.10s  %-10.10s (     %%) %-6.6s %-10.10s  %-10.10s (     %%) %-6.6s\n"
-#define FORMAT  "%-15.15s  %-11.11s  %-8.8s %-10.10u%-1.1s %-10.10u (%5.2f%%) %-6.4lf %-10.10u%-1.1s %-10.10u (%5.2f%%) %-6.4lf\n"
+#define FORMAT2 "%-15.15s  %-16.11s  %-8.8s %-10.10s  %-10.10s (     %%) %-6.6s %-10.10s  %-10.10s (     %%) %-6.6s %s\n"
+#define FORMAT  "%-15.15s  %-16.11s  %-8.8s %-10.10u%-1.1s %-10.10u (%5.2f%%) %-6.4lf %-10.10u%-1.1s %-10.10u (%5.2f%%) %-6.4lf %s\n"
 	struct ast_rtp_instance_stats stats;
 	char durbuf[10];
 	struct ast_channel *c;
@@ -21996,7 +21996,8 @@ static int show_chanstats_cb(struct sip_pvt *cur, struct __show_chan_arg *arg)
 		stats.txcount > (unsigned int) 100000 ? "K":" ",
 		stats.txploss,
 		stats.txcount > 0 ? (double) stats.txploss / stats.txcount * 100 : 0,
-		stats.txjitter
+		stats.txjitter,
+		c ? ast_channel_name(c) : ""
 	);
 	arg->numchans++;
 	sip_pvt_unlock(cur);
@@ -22026,7 +22027,7 @@ static char *sip_show_channelstats(struct ast_cli_entry *e, int cmd, struct ast_
 	if (a->argc != 3)
 		return CLI_SHOWUSAGE;
 
-	ast_cli(a->fd, FORMAT2, "Peer", "Call ID", "Duration", "Recv: Pack", "Lost", "Jitter", "Send: Pack", "Lost", "Jitter");
+	ast_cli(a->fd, FORMAT2, "Peer", "Call ID", "Duration", "Recv: Pack", "Lost", "Jitter", "Send: Pack", "Lost", "Jitter", "Channel");
 
 	/* iterate on the container and invoke the callback on each item */
 	i = ao2_iterator_init(dialogs, 0);
