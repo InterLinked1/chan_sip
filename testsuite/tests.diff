@@ -8,7 +8,7 @@ index d3416349..fb7f2b73 100644
 +    - dir: 'SIP'
      - dir: 'iax2'
      - dir: 'local'
-     - dir: 'pjsip'
+     - dir: 'websocket'
 diff --git a/tests/fax/tests.yaml b/tests/fax/tests.yaml
 index 4f7e5dc9..c344c517 100644
 --- a/tests/fax/tests.yaml
