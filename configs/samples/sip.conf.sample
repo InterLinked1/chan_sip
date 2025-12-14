@@ -551,6 +551,8 @@ srvlookup=yes                   ; Enable DNS SRV lookups on outbound calls
 													; with these carriers. Custom SIP parameters in the From
 													; header may be set using the SIPAddParameter application.
 
+;ignore_hold_before_answer=yes  ; Default "no"      ; Ignore any received "hold" prior to a 200 OK response.
+
 ; The shrinkcallerid function removes '(', ' ', ')', non-trailing '.', and '-' not
 ; in square brackets.  For example, the caller id value 555.5555 becomes 5555555
 ; when this option is enabled.  Disabling this option results in no modification

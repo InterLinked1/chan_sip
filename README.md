@@ -46,6 +46,8 @@ The `chan_sip` unit tests are from the Asterisk test suite prior to removal: htt
 
 - Support for macros has been removed per the Asterisk deprecation policy
 
+- Option to ignore hold if received prior to channel answering (`ignore_hold_before_answer`)
+
 All this said, as both an Asterisk user and developer myself, I recommend you migrate to `chan_pjsip` if you don't have a good reason not to. It will likely serve your needs better. If, however, you still need or prefer `chan_sip`, then this repo is for you.
 
 ### Development

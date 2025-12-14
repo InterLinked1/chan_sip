@@ -11367,6 +11367,13 @@ static int process_sdp(struct sip_pvt *p, struct sip_request *req, int t38action
 		ast_queue_frame(p->owner, &ast_null_frame);
 		change_hold_state(p, req, FALSE, sendonly);
 	} else if ((sockaddr_is_null_or_any(sa) && sockaddr_is_null_or_any(vsa) && sockaddr_is_null_or_any(tsa) && sockaddr_is_null_or_any(isa)) || (sendonly && sendonly != -1)) {
+		if (sip_cfg.ignoreholdbeforeanswer) {
+			/* Ignore hold if received prior to channel answering */
+			if (ast_channel_state(p->owner) != AST_STATE_UP) {
+				ast_debug(1, "Received hold on %s (%s), ignoring\n", ast_channel_name(p->owner), ast_state2str(ast_channel_state(p->owner)));
+				goto process_sdp_cleanup;
+			}
+		}
 		if (!ast_test_flag(&p->flags[2], SIP_PAGE3_DISCARD_REMOTE_HOLD_RETRIEVAL)) {
 			ast_queue_hold(p->owner, p->mohsuggest);
 		}
@@ -22124,6 +22131,7 @@ static char *sip_show_settings(struct ast_cli_entry *e, int cmd, struct ast_cli_
 	ast_cli(a->fd, "  Send Diversion:         %s\n", AST_CLI_YESNO(sip_cfg.send_diversion));
 	ast_cli(a->fd, "  Send OLI:               %s\n", AST_CLI_YESNO(sip_cfg.send_oli));
 	ast_cli(a->fd, "  From Tags Inside:       %s\n", AST_CLI_YESNO(sip_cfg.uri_parameters_instead));
+	ast_cli(a->fd, "  Ignore Hold Before Answer: %s\n", AST_CLI_YESNO(sip_cfg.ignoreholdbeforeanswer));
 	ast_cli(a->fd, "  Caller ID:              %s\n", default_callerid);
 	if ((default_fromdomainport) && (default_fromdomainport != STANDARD_SIP_PORT)) {
 		ast_cli(a->fd, "  From: Domain:           %s:%d\n", default_fromdomain, default_fromdomainport);
@@ -32951,6 +32959,7 @@ static int reload_config(enum channelreloadreason reason)
 	sip_cfg.send_diversion = DEFAULT_SEND_DIVERSION;
 	sip_cfg.send_oli = DEFAULT_SEND_OLI;
 	sip_cfg.uri_parameters_instead = DEFAULT_FROM_TAGS_INSIDE;
+	sip_cfg.ignoreholdbeforeanswer = DEFAULT_IGNORE_HOLD_BEFORE_ANSWER;
 	sip_cfg.notifyringing = DEFAULT_NOTIFYRINGING;
 	sip_cfg.notifycid = DEFAULT_NOTIFYCID;
 	sip_cfg.notifyhold = FALSE;		/*!< Keep track of hold status for a peer */
@@ -33282,6 +33291,8 @@ static int reload_config(enum channelreloadreason reason)
 			sip_cfg.send_oli = ast_true(v->value);
 		} else if (!strcasecmp(v->name, "uri_parameters_instead")) {
 			sip_cfg.uri_parameters_instead = ast_true(v->value);
+		} else if (!strcasecmp(v->name, "ignore_hold_before_answer")) {
+			sip_cfg.ignoreholdbeforeanswer = ast_true(v->value);
 		} else if (!strcasecmp(v->name, "callerid")) {
 			ast_copy_string(default_callerid, v->value, sizeof(default_callerid));
 		} else if (!strcasecmp(v->name, "mwi_from")) {

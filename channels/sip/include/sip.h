@@ -229,6 +229,7 @@
 #define DEFAULT_SEND_DIVERSION TRUE
 #define DEFAULT_SEND_OLI FALSE
 #define DEFAULT_FROM_TAGS_INSIDE FALSE
+#define DEFAULT_IGNORE_HOLD_BEFORE_ANSWER FALSE
 #define DEFAULT_T1MIN             100   /*!< 100 MS for minimal roundtrip time */
 #define DEFAULT_MAX_CALL_BITRATE (384)  /*!< Max bitrate for video */
 #ifndef DEFAULT_USERAGENT
@@ -767,6 +768,7 @@ struct sip_settings {
 	int send_diversion;	        /*!< Whether to Send SIP Diversion headers */
 	int send_oli;               /*!< Whether to Send ANI2/OLI */
 	int uri_parameters_instead; /*!< Whether to make customer parameters URI parameters instead of Header parameters */
+	int ignoreholdbeforeanswer;	/*!< Whether to ingore hold received before 200 OK */
 	int matchexternaddrlocally;   /*!< Match externaddr/externhost setting against localnet setting */
 	char regcontext[AST_MAX_CONTEXT];  /*!< Context for auto-extensions */
 	char messagecontext[AST_MAX_CONTEXT];  /*!< Default context for out of dialog msgs. */
