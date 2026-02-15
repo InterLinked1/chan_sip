@@ -1109,7 +1109,7 @@ int get_in_brackets_const(const char *src,const char **start,int *length)
 int get_in_brackets_full(char *tmp,char **out,char **residue)
 {
 	const char *parse = tmp;
-	char *first_bracket;
+	const char *first_bracket;
 	char *second_bracket;
 
 	if (out) {
@@ -1128,7 +1128,7 @@ int get_in_brackets_full(char *tmp,char **out,char **residue)
 	* On any error give up and return -1
 	*/
 	while ( (first_bracket = strchr(parse, '<')) ) {
-		char *first_quote = strchr(parse, '"');
+		const char *first_quote = strchr(parse, '"');
 		first_bracket++;
 		if (!first_quote || first_quote >= first_bracket) {
 			break; /* no need to look at quoted part */
@@ -1151,7 +1151,7 @@ int get_in_brackets_full(char *tmp,char **out,char **residue)
 		parse = tmp;
 	}
 
-	if ((second_bracket = strchr(parse, '>'))) {
+	if ((second_bracket = strchr((char*) parse, '>'))) {
 		*second_bracket++ = '\0';
 		if (out) {
 			*out = (char *) parse;
@@ -2389,7 +2389,8 @@ void free_via(struct sip_via *v)
 struct sip_via *parse_via(const char *header)
 {
 	struct sip_via *v = ast_calloc(1, sizeof(*v));
-	char *via, *parm;
+	char *via;
+	const char *parm;
 
 	if (!v) {
 		return NULL;
@@ -2441,7 +2442,7 @@ struct sip_via *parse_via(const char *header)
 
 	/* evaluate any via-parms */
 	while ((parm = strsep(&via, "; \t\r\n"))) {
-		char *c;
+		const char *c;
 		if ((c = strstr(parm, "maddr="))) {
 			v->maddr = ast_skip_blanks(c + sizeof("maddr=") - 1);
 		} else if ((c = strstr(parm, "branch="))) {
