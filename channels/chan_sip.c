@@ -33944,6 +33944,10 @@ static int reload_config(enum channelreloadreason reason)
 		}
 	}
 
+	/* registry_count and peer_count are set but not used anywhere else, so this debug message avoids a compiler warning for now,
+	 * in case we want to do anything with these variables later. */
+	ast_debug(5, "Loaded %d registration%s, %d peer%s\n", registry_count, ESS(registry_count), peer_count, ESS(peer_count));
+
 	/* Add default domains - host name, IP address and IP:port
 	 * Only do this if user added any sip domain with "localdomains"
 	 * In order to *not* break backwards compatibility
