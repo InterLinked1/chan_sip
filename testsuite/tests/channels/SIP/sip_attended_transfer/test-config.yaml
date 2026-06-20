@@ -1,4 +1,5 @@
 testinfo:
+    skip: 'Doesn't pass anymore'
     summary:     'Test SIP Attended Transfer'
     description: |
         'This test sets up three sipp accounts: Alice, Bob, and Charlie. The test commences

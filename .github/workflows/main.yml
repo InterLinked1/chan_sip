@@ -18,7 +18,7 @@ jobs:
     name: Ubuntu 24.04
     steps:
      - name: Checkout
-       uses: actions/checkout@v4
+       uses: actions/checkout@v6
      - name: Install required packages
        run: |
           sudo apt-get update -y
@@ -50,7 +50,7 @@ jobs:
     name: Ubuntu 22.04
     steps:
      - name: Checkout
-       uses: actions/checkout@v4
+       uses: actions/checkout@v6
      - name: Install required packages
        run: |
           sudo apt-get update -y
@@ -83,7 +83,7 @@ jobs:
     container: debian:12
     steps:
      - name: Checkout
-       uses: actions/checkout@v4
+       uses: actions/checkout@v6
      - name: Install required packages
        run: |
           apt-get update -y
@@ -144,7 +144,7 @@ jobs:
     container: rockylinux:9.3
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install required packages
         run: |
           dnf install -y git patch subversion gcc gcc-c++ pkg-config autoconf automake m4 libtool libuuid-devel libxml2-devel sqlite-devel
@@ -176,7 +176,7 @@ jobs:
     container: opensuse/tumbleweed
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install required packages
         run: |
           zypper install -y git-core make patch gawk subversion bzip2 gcc-c++ libedit-devel libuuid-devel libxml2-devel sqlite3-devel
@@ -208,7 +208,7 @@ jobs:
     container: archlinux:latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install required packages
         run: |
           pacman -Syu --noconfirm

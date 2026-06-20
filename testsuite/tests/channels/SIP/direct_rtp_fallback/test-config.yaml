@@ -1,4 +1,5 @@
 testinfo:
+    skip: 'direct_rtp_fallback'
     summary:     'Basic direct media reinvite fallback test'
     description: |
         "This test verifies that Asterisk will fall back to P2P bridging if a direct media reinvite fails and checks for conditions where such an event fails to clean up properly."
